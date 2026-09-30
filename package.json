@@ -1,0 +1,18 @@
+{
+  "name": "medlocate-root",
+  "version": "1.0.0",
+  "description": "MedLocate — MERN Stack Pharmacy Medicine Locator and Reservation System",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install",
+    "server": "cd server && npm run dev",
+    "client": "cd client && npm run dev",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "seed": "cd server && npm run seed",
+    "test:concurrency": "cd server && npm run test:concurrency",
+    "build": "cd client && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
