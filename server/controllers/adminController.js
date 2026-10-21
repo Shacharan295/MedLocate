@@ -140,8 +140,24 @@ const getAdminReports = async (req, res, next) => {
   }
 };
 
+/**
+ * @route   POST /api/admin/seed
+ * @desc    Re-seed platform database with demo data
+ * @access  Private (Admin)
+ */
+const postSeed = async (req, res, next) => {
+  try {
+    const { seedData } = require('../scripts/seed');
+    await seedData({ clearExisting: true });
+    return res.status(200).json({ success: true, message: 'Database successfully re-seeded.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getUsers,
   getAdminPharmacies,
-  getAdminReports
+  getAdminReports,
+  postSeed
 };

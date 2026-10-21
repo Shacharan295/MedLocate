@@ -1,6 +1,12 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import Navbar from './components/Navbar';
+
+// Layouts & Route Guards
+import PublicLayout from './layouts/PublicLayout';
+import PatientLayout from './layouts/PatientLayout';
+import PharmacyLayout from './layouts/PharmacyLayout';
+import PatientRoute from './components/PatientRoute';
+import PharmacyRoute from './components/PharmacyRoute';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleRoute from './components/RoleRoute';
 
@@ -9,17 +15,20 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import PharmacyRegister from './pages/PharmacyRegister';
+import Architecture from './pages/Architecture';
 
-// Patient Pages
+// Patient Portal Pages (Under /patient/*)
 import PatientDashboard from './pages/patient/PatientDashboard';
 import PatientSearch from './pages/patient/PatientSearch';
 import PatientPharmacies from './pages/patient/PatientPharmacies';
 import PatientReservations from './pages/patient/PatientReservations';
 
-// Pharmacy Pages
+// Pharmacy Portal Pages (Under /pharmacy/*)
+import PharmacyLogin from './pages/pharmacy/PharmacyLogin';
 import PharmacyDashboard from './pages/pharmacy/PharmacyDashboard';
 import PharmacyInventory from './pages/pharmacy/PharmacyInventory';
 import PharmacyReservations from './pages/pharmacy/PharmacyReservations';
+import PharmacyOrders from './pages/pharmacy/PharmacyOrders';
 import PharmacyProfile from './pages/pharmacy/PharmacyProfile';
 
 // Admin Pages
@@ -30,60 +39,55 @@ import AdminReports from './pages/admin/AdminReports';
 
 export const App = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
-      <Navbar />
+    <Routes>
+      {/* 1. Public Routes Wrapped in PublicLayout */}
+      <Route element={<PublicLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/pharmacy-register" element={<PharmacyRegister />} />
+        <Route path="/architecture" element={<Architecture />} />
+      </Route>
 
-      <main className="flex-1">
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/pharmacy-register" element={<PharmacyRegister />} />
+      {/* 2. Standalone Pharmacy Login */}
+      <Route path="/pharmacy/login" element={<PharmacyLogin />} />
+
+      {/* 3. STRICTLY SEPARATE PATIENT PORTAL (/patient/*) */}
+      <Route element={<PatientRoute />}>
+        <Route element={<PatientLayout />}>
+          <Route path="/patient/dashboard" element={<PatientDashboard />} />
+          <Route path="/patient/search" element={<PatientSearch />} />
+          <Route path="/patient/pharmacies" element={<PatientPharmacies />} />
+          <Route path="/patient/reservations" element={<PatientReservations />} />
+          <Route path="/patient/reservations/:id" element={<PatientReservations />} />
           <Route path="/search" element={<Navigate to="/patient/search" replace />} />
+        </Route>
+      </Route>
 
-          {/* Patient Routes (Accessible by Patient & Admin) */}
-          <Route element={<ProtectedRoute />}>
-            <Route element={<RoleRoute allowedRoles={['patient', 'admin']} />}>
-              <Route path="/patient/dashboard" element={<PatientDashboard />} />
-              <Route path="/patient/search" element={<PatientSearch />} />
-              <Route path="/patient/pharmacies" element={<PatientPharmacies />} />
-              <Route path="/patient/reservations" element={<PatientReservations />} />
-              <Route path="/patient/reservations/:id" element={<PatientReservations />} />
-            </Route>
+      {/* 4. STRICTLY SEPARATE PHARMACY PORTAL (/pharmacy/*) */}
+      <Route element={<PharmacyRoute />}>
+        <Route element={<PharmacyLayout />}>
+          <Route path="/pharmacy/dashboard" element={<PharmacyDashboard />} />
+          <Route path="/pharmacy/inventory" element={<PharmacyInventory />} />
+          <Route path="/pharmacy/reservations" element={<PharmacyReservations />} />
+          <Route path="/pharmacy/orders" element={<PharmacyOrders />} />
+          <Route path="/pharmacy/profile" element={<PharmacyProfile />} />
+        </Route>
+      </Route>
 
-            {/* Pharmacy Staff Routes (Accessible by Pharmacy & Admin) */}
-            <Route element={<RoleRoute allowedRoles={['pharmacy', 'admin']} />}>
-              <Route path="/pharmacy/dashboard" element={<PharmacyDashboard />} />
-              <Route path="/pharmacy/inventory" element={<PharmacyInventory />} />
-              <Route path="/pharmacy/reservations" element={<PharmacyReservations />} />
-              <Route path="/pharmacy/profile" element={<PharmacyProfile />} />
-            </Route>
+      {/* 5. Admin Portal Routes */}
+      <Route element={<ProtectedRoute />}>
+        <Route element={<RoleRoute allowedRoles={['admin']} />}>
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<AdminUsers />} />
+          <Route path="/admin/pharmacies" element={<AdminPharmacies />} />
+          <Route path="/admin/reports" element={<AdminReports />} />
+        </Route>
+      </Route>
 
-            {/* Admin Routes (Admin Only) */}
-            <Route element={<RoleRoute allowedRoles={['admin']} />}>
-              <Route path="/admin/dashboard" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<AdminUsers />} />
-              <Route path="/admin/pharmacies" element={<AdminPharmacies />} />
-              <Route path="/admin/reports" element={<AdminReports />} />
-            </Route>
-          </Route>
-
-          {/* Catch-all Fallback */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </main>
-
-      {/* Global Footer */}
-      <footer className="bg-white border-t border-slate-200/80 py-6 mt-12 text-center text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto px-4">
-          <p>© 2026 MedLocate — MERN Stack Pharmacy Medicine Locator and Reservation System.</p>
-          <p className="mt-1">
-            Built with React, Express, MongoDB Atlas & 2dsphere Geospatial Indexing.
-          </p>
-        </div>
-      </footer>
-    </div>
+      {/* Catch-all Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 };
 

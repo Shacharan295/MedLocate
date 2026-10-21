@@ -98,10 +98,13 @@ const getReservationById = async (req, res, next) => {
     }
 
     // Authorization check
-    if (req.user.role === 'patient' && reservation.patientId._id.toString() !== req.user.id) {
+    const patientOwnerId = reservation.patientId?._id ? reservation.patientId._id.toString() : reservation.patientId?.toString();
+    const pharmacyOwnerId = reservation.pharmacyId?._id ? reservation.pharmacyId._id.toString() : reservation.pharmacyId?.toString();
+
+    if (req.user.role === 'patient' && patientOwnerId !== req.user.id.toString()) {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
-    if (req.user.role === 'pharmacy' && reservation.pharmacyId._id.toString() !== req.user.pharmacyId) {
+    if (req.user.role === 'pharmacy' && pharmacyOwnerId !== req.user.pharmacyId?.toString()) {
       return res.status(403).json({ success: false, message: 'Access denied.' });
     }
 

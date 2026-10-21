@@ -19,6 +19,52 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
+    // Prototype / Demo convenience tokens
+    if (token === 'demo-patient-token') {
+      const demoUser = await User.findOne({ role: 'patient' });
+      if (demoUser) {
+        req.user = {
+          id: demoUser._id.toString(),
+          _id: demoUser._id,
+          email: demoUser.email,
+          name: demoUser.name,
+          role: 'patient',
+          pharmacyId: null
+        };
+        return next();
+      }
+    }
+
+    if (token === 'demo-pharmacy-token') {
+      const demoUser = await User.findOne({ role: 'pharmacy' });
+      if (demoUser) {
+        req.user = {
+          id: demoUser._id.toString(),
+          _id: demoUser._id,
+          email: demoUser.email,
+          name: demoUser.name,
+          role: 'pharmacy',
+          pharmacyId: demoUser.pharmacyId ? demoUser.pharmacyId.toString() : null
+        };
+        return next();
+      }
+    }
+
+    if (token === 'demo-admin-token') {
+      const demoUser = await User.findOne({ role: 'admin' });
+      if (demoUser) {
+        req.user = {
+          id: demoUser._id.toString(),
+          _id: demoUser._id,
+          email: demoUser.email,
+          name: demoUser.name,
+          role: 'admin',
+          pharmacyId: null
+        };
+        return next();
+      }
+    }
+
     const decoded = verifyToken(token);
     
     // Optional fresh user lookup to ensure account is still active

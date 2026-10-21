@@ -37,6 +37,16 @@ const pharmacySchema = new mongoose.Schema(
     verified: {
       type: Boolean,
       default: false
+    },
+    rating: {
+      type: Number,
+      default: 4.5,
+      min: 1,
+      max: 5
+    },
+    openingHours: {
+      type: String,
+      default: '8:00 AM - 10:00 PM'
     }
   },
   {

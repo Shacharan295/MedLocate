@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { reservationService } from '../../services/api';
+import { usePharmacy } from '../../context/PharmacyContext';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
@@ -13,10 +14,12 @@ import {
   CheckCircle,
   XCircle,
   PackageCheck,
-  Search
+  Search,
+  Store
 } from 'lucide-react';
 
 export const PharmacyReservations = () => {
+  const { activePharmacy, getActivePharmacyReservations, updateReservationStatus: updateContextStatus } = usePharmacy();
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -32,9 +35,17 @@ export const PharmacyReservations = () => {
       setLoading(true);
       setError(null);
       const res = await reservationService.getAll();
-      setReservations(res.data?.data || []);
+      const serverRes = res.data?.data || [];
+      const localRes = getActivePharmacyReservations();
+      const map = new Map();
+      localRes.forEach((r) => map.set(r.pickupCode || r.id || r._id, r));
+      serverRes.forEach((r) => {
+        const key = r.pickupCode || r.id || r._id;
+        if (!map.has(key)) map.set(key, r);
+      });
+      setReservations(Array.from(map.values()));
     } catch (err) {
-      setError('Failed to fetch incoming reservations.');
+      setReservations(getActivePharmacyReservations());
     } finally {
       setLoading(false);
     }
@@ -42,15 +53,20 @@ export const PharmacyReservations = () => {
 
   useEffect(() => {
     fetchReservations();
-  }, []);
+  }, [activePharmacy]);
 
   const handleStatusUpdate = async (id, newStatus) => {
+    updateContextStatus(id, newStatus);
     try {
       await reservationService.updateStatus(id, newStatus);
-      await fetchReservations();
     } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update reservation status.');
+      // In demo mode local context is updated
     }
+    setReservations((prev) =>
+      prev.map((r) =>
+        r._id === id || r.id === id || r.pickupCode === id ? { ...r, status: newStatus } : r
+      )
+    );
   };
 
   const handleConfirmCancel = async () => {

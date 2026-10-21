@@ -187,7 +187,9 @@ const searchMedicines = async (req, res, next) => {
           address: '$address',
           phone: '$phone',
           location: '$location',
-          verified: '$verified'
+          verified: '$verified',
+          rating: { $ifNull: ['$rating', 4.5] },
+          openingHours: { $ifNull: ['$openingHours', '8:00 AM - 10:00 PM'] }
         },
         medicine: {
           id: '$medicineDetails._id',

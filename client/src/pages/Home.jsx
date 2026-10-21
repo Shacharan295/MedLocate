@@ -14,7 +14,8 @@ import {
   Zap,
   Store,
   Users,
-  Shield
+  Shield,
+  Layers
 } from 'lucide-react';
 
 export const Home = () => {
@@ -128,8 +129,34 @@ export const Home = () => {
         </div>
       </section>
 
+      {/* System Architecture Feature Callout */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-gradient-to-r from-teal-900 via-slate-900 to-slate-950 rounded-3xl p-8 sm:p-10 text-white border border-teal-800/40 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="max-w-2xl space-y-2">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-semibold">
+              <Layers className="w-3.5 h-3.5" />
+              <span>Full-Stack Architecture Visualizer</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
+              Interactive System Architecture
+            </h2>
+            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
+              Explore how MedLocate works from user personas to MongoDB 2dsphere indexing and lock-free atomic concurrency. Animate live workflows (Flows A through D) and inspect code responsibilities.
+            </p>
+          </div>
+          <Link
+            to="/architecture"
+            className="px-6 py-3 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold rounded-2xl text-xs sm:text-sm shadow-md transition-all flex items-center space-x-2 shrink-0"
+          >
+            <span>Explore Architecture</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+      </section>
+
       {/* One-Click Demo Accounts Section (College Presentation Feature) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
         <div className="bg-slate-900 rounded-3xl p-8 sm:p-10 text-white relative overflow-hidden shadow-xl">
           <div className="max-w-2xl space-y-3">
             <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-teal-500/20 text-teal-300 text-xs font-semibold">
@@ -175,27 +202,27 @@ export const Home = () => {
             {/* Pharmacy Demo Card */}
             <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-5 flex flex-col justify-between space-y-4">
               <div>
-                <div className="w-9 h-9 rounded-xl bg-sky-500/20 text-sky-400 flex items-center justify-center mb-3">
+                <div className="w-9 h-9 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center mb-3">
                   <Store className="w-5 h-5" />
                 </div>
-                <h4 className="font-bold text-sm text-white">Pharmacy Persona</h4>
-                <p className="text-slate-400 text-xs mt-1">Apollo Pharmacy T. Nagar</p>
-                <code className="text-[11px] text-sky-300 font-mono block mt-1">
-                  pharmacy@medlocate.demo
+                <div className="flex items-center space-x-2">
+                  <h4 className="font-bold text-sm text-white">Pharmacy Portal</h4>
+                  <span className="text-[10px] bg-teal-500/20 text-teal-300 px-1.5 py-0.2 rounded font-semibold border border-teal-500/30">
+                    Recommended
+                  </span>
+                </div>
+                <p className="text-slate-400 text-xs mt-1">Porur Care Dispensary (Chennai)</p>
+                <code className="text-[11px] text-teal-300 font-mono block mt-1">
+                  porur@medlocate.demo
                 </code>
               </div>
               <button
                 type="button"
-                onClick={() =>
-                  handleQuickDemoLogin(
-                    'pharmacy@medlocate.demo',
-                    'password123',
-                    '/pharmacy/dashboard'
-                  )
-                }
-                className="w-full py-2 bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors"
+                onClick={() => navigate('/pharmacy/login')}
+                className="w-full py-2 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 text-slate-950 font-bold text-xs rounded-xl shadow-xs transition-colors flex items-center justify-center space-x-1"
               >
-                Log In as Pharmacy
+                <span>Enter Pharmacy Portal</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
 

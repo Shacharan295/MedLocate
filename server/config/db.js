@@ -22,8 +22,20 @@ const connectDB = async () => {
 
   try {
     const { MongoMemoryServer } = require('mongodb-memory-server');
-    console.log(`[Database] Initializing MongoDB Memory Server...`);
-    memoryServerInstance = await MongoMemoryServer.create();
+    const path = require('path');
+    const fs = require('fs');
+
+    const mongoDataDir = path.join(__dirname, '..', '.mongo-data');
+    if (!fs.existsSync(mongoDataDir)) {
+      fs.mkdirSync(mongoDataDir, { recursive: true });
+    }
+
+    console.log(`[Database] Initializing MongoDB Memory Server (data path: ${mongoDataDir})...`);
+    memoryServerInstance = await MongoMemoryServer.create({
+      instance: {
+        dbPath: mongoDataDir
+      }
+    });
     const uri = memoryServerInstance.getUri();
     const conn = await mongoose.connect(uri);
     console.log(`[Database] Connected to high-performance MongoDB instance at: ${uri}`);

@@ -11,12 +11,12 @@ const startServer = async () => {
     await connectDB();
 
     // Check if database needs initial seeding
-    const User = require('./models/User');
-    const userCount = await User.countDocuments();
-    if (userCount === 0) {
-      console.log('[Server Startup] Database is empty. Seeding initial demo data...');
+    const Medicine = require('./models/Medicine');
+    const medicineCount = await Medicine.countDocuments();
+    if (medicineCount < 10) {
+      console.log('[Server Startup] Database catalog incomplete. Seeding full demonstration dataset...');
       const { seedData } = require('./scripts/seed');
-      await seedData({ clearExisting: false });
+      await seedData({ clearExisting: true });
     }
 
     // 2. Initialize reservation expiry cron workers

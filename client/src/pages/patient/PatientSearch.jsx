@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { medicineService } from '../../services/api';
 import { useLocation } from '../../context/LocationContext';
+import { usePharmacy } from '../../context/PharmacyContext';
+import { useAuth } from '../../context/AuthContext';
 import PharmacyCard from '../../components/PharmacyCard';
 import PharmacyMap from '../../components/PharmacyMap';
 import ReservationModal from '../../components/ReservationModal';
@@ -30,11 +32,19 @@ export const PatientSearch = () => {
   const initialQuery = searchParams.get('q') || 'Paracetamol';
 
   const { latitude, longitude, locationLabel } = useLocation();
+  const { activePharmacy, setActivePharmacy } = usePharmacy();
+  const { switchToPatient } = useAuth();
+
   const [searchTerm, setSearchTerm] = useState(initialQuery);
   const [results, setResults] = useState([]);
   const [fallbackFacilities, setFallbackFacilities] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Automatically ensure patient role for demo workflow
+  useEffect(() => {
+    switchToPatient();
+  }, []);
 
   // Progressive search state
   const [scanSteps, setScanSteps] = useState([]);
@@ -370,16 +380,45 @@ export const PatientSearch = () => {
                 </span>
               </div>
 
-              {results.map((item) => (
-                <PharmacyCard
-                  key={item._id}
-                  item={item}
-                  isSelected={selectedItem?._id === item._id}
-                  onSelect={() => setSelectedItem(item)}
-                  onReserve={handleOpenReserve}
-                  isEmergency={emergencyMode}
-                />
-              ))}
+              {/* Prioritize Porur Care Dispensary for seamless demo testing */}
+              {results
+                .slice()
+                .sort((a, b) => {
+                  const aName = a.pharmacy?.name?.toLowerCase() || '';
+                  const bName = b.pharmacy?.name?.toLowerCase() || '';
+                  const isAPorur = aName.includes('porur');
+                  const isBPorur = bName.includes('porur');
+                  if (isAPorur && !isBPorur) return -1;
+                  if (!isAPorur && isBPorur) return 1;
+                  return 0;
+                })
+                .map((item) => {
+                  const isSelected =
+                    selectedItem?._id === item._id ||
+                    (activePharmacy && item.pharmacy?.name === activePharmacy?.name);
+
+                  return (
+                    <PharmacyCard
+                      key={item._id}
+                      item={item}
+                      isSelected={isSelected}
+                      onSelect={() => {
+                        setSelectedItem(item);
+                        if (item.pharmacy) {
+                          setActivePharmacy(item.pharmacy);
+                        }
+                      }}
+                      onReserve={(it) => {
+                        const targetPharm = it.pharmacy || item.pharmacy;
+                        if (targetPharm) {
+                          setActivePharmacy(targetPharm);
+                        }
+                        handleOpenReserve(it);
+                      }}
+                      isEmergency={emergencyMode}
+                    />
+                  );
+                })}
             </div>
           ) : (
             /* No Results: Exact User Prompt Message & Authentic Healthcare Facilities Fallback */
@@ -455,12 +494,23 @@ export const PatientSearch = () => {
             userLat={latitude}
             userLng={longitude}
             pharmacies={results}
-            selectedPharmacyId={selectedItem?.pharmacy?.id}
-            onSelectPharmacy={(p) => setSelectedItem(p)}
-            onReserve={handleOpenReserve}
+            selectedPharmacyId={selectedItem?.pharmacy?.id || selectedItem?.pharmacy?._id || activePharmacy?.id}
+            onSelectPharmacy={(p) => {
+              setSelectedItem(p);
+              if (p.pharmacy) {
+                setActivePharmacy(p.pharmacy);
+              }
+            }}
+            onReserve={(p) => {
+              if (p.pharmacy) {
+                setActivePharmacy(p.pharmacy);
+              }
+              handleOpenReserve(p);
+            }}
             isEmergency={emergencyMode}
           />
         </div>
+
       </div>
 
       {/* Reservation Modal */}

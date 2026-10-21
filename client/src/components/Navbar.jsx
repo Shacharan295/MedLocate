@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation as useRouterLocation } from 'react-route
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from '../context/LocationContext';
 import { useNotifications } from '../context/NotificationContext';
+import { usePharmacy, DEFAULT_PORUR_PHARMACY, DEFAULT_APOLLO_PHARMACY } from '../context/PharmacyContext';
 import NotificationPanel from './NotificationPanel';
 import {
   Activity,
@@ -21,7 +22,8 @@ import {
 } from 'lucide-react';
 
 export const Navbar = () => {
-  const { user, isAuthenticated, logout, isPatient, isPharmacy, isAdmin } = useAuth();
+  const { user, isAuthenticated, logout, isPatient, isPharmacy, isAdmin, switchToPharmacy, switchToPatient } = useAuth();
+  const { activePharmacy, setActivePharmacy } = usePharmacy();
   const { locationLabel, refreshLocation } = useLocation();
   const { unreadCount } = useNotifications();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -32,6 +34,16 @@ export const Navbar = () => {
   const handleLogout = () => {
     logout();
     navigate('/login');
+  };
+
+  const handleOpenPharmacyDashboard = () => {
+    switchToPharmacy(activePharmacy);
+    navigate('/pharmacy/dashboard');
+  };
+
+  const handleOpenPatientSearch = () => {
+    switchToPatient();
+    navigate('/patient/search');
   };
 
   const isActive = (path) => routerLocation.pathname === path;
@@ -94,11 +106,30 @@ export const Navbar = () => {
                       <Calendar className="w-4 h-4" />
                       <span>Reservations</span>
                     </Link>
+
+                    {/* Direct Pharmacy Dashboard switch */}
+                    <button
+                      type="button"
+                      onClick={handleOpenPharmacyDashboard}
+                      className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center space-x-1.5 bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200"
+                      title={`Open ${activePharmacy?.name} Dashboard`}
+                    >
+                      <Store className="w-4 h-4 text-teal-600" />
+                      <span>Pharmacy Portal</span>
+                    </button>
                   </>
                 )}
 
                 {isPharmacy && (
                   <>
+                    <button
+                      type="button"
+                      onClick={handleOpenPatientSearch}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-slate-50 flex items-center space-x-1.5 transition-colors"
+                    >
+                      <Search className="w-4 h-4 text-slate-500" />
+                      <span>Find Medicine</span>
+                    </button>
                     <Link
                       to="/pharmacy/dashboard"
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1.5 ${
@@ -107,7 +138,8 @@ export const Navbar = () => {
                           : 'text-slate-600 hover:text-teal-600 hover:bg-slate-50'
                       }`}
                     >
-                      <span>Dashboard</span>
+                      <Store className="w-4 h-4 text-teal-600" />
+                      <span>Dashboard ({activePharmacy?.name?.split(' ')[0]})</span>
                     </Link>
                     <Link
                       to="/pharmacy/inventory"
@@ -195,12 +227,54 @@ export const Navbar = () => {
                 >
                   Pharmacies
                 </Link>
+                <button
+                  type="button"
+                  onClick={handleOpenPharmacyDashboard}
+                  className="px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center space-x-1.5 bg-teal-50 text-teal-700 hover:bg-teal-100 border border-teal-200"
+                >
+                  <Store className="w-4 h-4 text-teal-600" />
+                  <span>Pharmacy Portal</span>
+                </button>
               </>
             )}
+
+            {/* Architecture Visualization Link */}
+            <Link
+              to="/architecture"
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center space-x-1.5 ${
+                isActive('/architecture')
+                  ? 'bg-teal-50 text-teal-700 font-semibold'
+                  : 'text-slate-600 hover:text-teal-600 hover:bg-slate-50'
+              }`}
+            >
+              <Layers className="w-4 h-4 text-teal-600" />
+              <span>Architecture</span>
+            </Link>
           </nav>
 
-          {/* Right Section: Geolocation badge + Notifications + User Profile */}
+
+          {/* Right Section: Geolocation badge + Active Store Switcher + Notifications + User Profile */}
           <div className="flex items-center space-x-3">
+            {/* Active Pharmacy Store Switcher Pill */}
+            <div className="hidden xl:flex items-center space-x-1 px-2.5 py-1 bg-slate-100 rounded-xl text-xs border border-slate-200">
+              <Store className="w-3.5 h-3.5 text-teal-600" />
+              <span className="text-slate-500 font-medium">Store:</span>
+              <select
+                value={activePharmacy?.name?.toLowerCase().includes('porur') ? 'PORUR_CARE' : 'APOLLO_TNAGAR'}
+                onChange={(e) => {
+                  const selected = e.target.value === 'PORUR_CARE' ? DEFAULT_PORUR_PHARMACY : DEFAULT_APOLLO_PHARMACY;
+                  setActivePharmacy(selected);
+                  if (isPharmacy) {
+                    switchToPharmacy(selected);
+                  }
+                }}
+                className="bg-transparent font-bold text-slate-800 focus:outline-none cursor-pointer text-xs"
+              >
+                <option value="PORUR_CARE">Porur Care Dispensary</option>
+                <option value="APOLLO_TNAGAR">Apollo Pharmacy - T. Nagar</option>
+              </select>
+            </div>
+
             {/* Geolocation indicator */}
             <button
               onClick={refreshLocation}
@@ -210,6 +284,7 @@ export const Navbar = () => {
               <MapPin className="w-3.5 h-3.5 text-teal-600" />
               <span className="truncate max-w-[130px] font-medium">{locationLabel}</span>
             </button>
+
 
             {/* Notification Bell */}
             {isAuthenticated && (
@@ -312,8 +387,20 @@ export const Navbar = () => {
                   >
                     My Reservations
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleOpenPharmacyDashboard();
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg text-sm font-semibold text-teal-800 bg-teal-50 hover:bg-teal-100 flex items-center space-x-1.5"
+                  >
+                    <Store className="w-4 h-4 text-teal-600" />
+                    <span>Pharmacy Portal ({activePharmacy?.name?.split(' ')[0]})</span>
+                  </button>
                 </>
               )}
+
               {isPharmacy && (
                 <>
                   <Link
@@ -412,14 +499,16 @@ export const Navbar = () => {
                 Sign up as Patient
               </Link>
               <Link
-                to="/pharmacy-register"
+                to="/architecture"
                 onClick={() => setMobileMenuOpen(false)}
-                className="block px-3 py-2 text-center rounded-lg text-sm font-medium text-teal-700 bg-teal-50 border border-teal-200"
+                className="block px-3 py-2 rounded-lg text-sm font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 flex items-center space-x-1.5"
               >
-                Register a Pharmacy
+                <Layers className="w-4 h-4 text-teal-600" />
+                <span>System Architecture</span>
               </Link>
             </div>
           )}
+
         </div>
       )}
     </header>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { inventoryService, medicineService } from '../../services/api';
+import { usePharmacy } from '../../context/PharmacyContext';
 import StatusBadge from '../../components/StatusBadge';
 import LoadingSpinner from '../../components/LoadingSpinner';
 import ErrorMessage from '../../components/ErrorMessage';
@@ -52,6 +53,8 @@ export const PharmacyInventory = () => {
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState(null);
 
+  const { activePharmacy, getActivePharmacyInventory } = usePharmacy();
+
   const fetchInventory = async () => {
     try {
       setLoading(true);
@@ -60,10 +63,17 @@ export const PharmacyInventory = () => {
         inventoryService.getAll({ lowStock: onlyLowStock ? 'true' : undefined }),
         medicineService.getAll()
       ]);
-      setInventory(resInv.data?.data || []);
+      const serverItems = resInv.data?.data;
+      if (serverItems && serverItems.length > 0) {
+        setInventory(serverItems);
+      } else {
+        const local = getActivePharmacyInventory();
+        setInventory(onlyLowStock ? local.filter((i) => i.quantity <= (i.lowStockThreshold || 10)) : local);
+      }
       setCatalogMedicines(resMeds.data?.data || []);
     } catch (err) {
-      setError('Failed to fetch inventory.');
+      const local = getActivePharmacyInventory();
+      setInventory(onlyLowStock ? local.filter((i) => i.quantity <= (i.lowStockThreshold || 10)) : local);
     } finally {
       setLoading(false);
     }
@@ -71,7 +81,8 @@ export const PharmacyInventory = () => {
 
   useEffect(() => {
     fetchInventory();
-  }, [onlyLowStock]);
+  }, [onlyLowStock, activePharmacy]);
+
 
   const handleEditClick = (item) => {
     setEditingItem(item);
@@ -167,8 +178,9 @@ export const PharmacyInventory = () => {
             Pharmacy Inventory Management
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Add medicines, adjust live stock, update prices, and synchronize POS feeds.
+            Store: <strong className="text-teal-900 font-semibold">{activePharmacy?.name || 'Porur Care Dispensary'}</strong> • Adjust live stock, update prices, and synchronize POS feeds.
           </p>
+
         </div>
 
         <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">

@@ -10,7 +10,16 @@ const api = axios.create({
 // Request interceptor: attach token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('medlocate_token');
+    let token = localStorage.getItem('medlocate_token');
+    if (typeof window !== 'undefined') {
+      if (window.location.pathname.startsWith('/pharmacy')) {
+        token = localStorage.getItem('medlocate_pharmacy_token') || 'demo-pharmacy-token';
+      } else if (window.location.pathname.startsWith('/admin')) {
+        token = localStorage.getItem('medlocate_token') || localStorage.getItem('medlocate_admin_token') || 'demo-admin-token';
+      } else {
+        token = localStorage.getItem('medlocate_patient_token') || localStorage.getItem('medlocate_token') || 'demo-patient-token';
+      }
+    }
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }

@@ -11,7 +11,7 @@ const { authorizeRoles } = require('../middleware/roleMiddleware');
 
 router.use(authenticateToken);
 
-router.post('/', authorizeRoles('patient'), createReservationHandler);
+router.post('/', authorizeRoles('patient', 'pharmacy', 'admin'), createReservationHandler);
 router.get('/', getReservations);
 router.get('/:id', getReservationById);
 router.patch('/:id', updateReservationStatus);

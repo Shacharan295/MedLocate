@@ -1,65 +1,61 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { inventoryService, reservationService } from '../../services/api';
+import { usePharmacy } from '../../context/PharmacyContext';
 import StatsCard from '../../components/StatsCard';
 import StatusBadge from '../../components/StatusBadge';
-import LoadingSpinner from '../../components/LoadingSpinner';
-import ErrorMessage from '../../components/ErrorMessage';
 import {
   Package,
-  Layers,
   AlertTriangle,
   Clock,
   CheckCircle,
   ArrowRight,
-  TrendingUp,
-  RefreshCw
+  RefreshCw,
+  Store,
+  CheckCircle2,
+  Calendar,
+  User,
+  Phone
 } from 'lucide-react';
 
 export const PharmacyDashboard = () => {
-  const { user } = useAuth();
-  const [inventory, setInventory] = useState([]);
-  const [reservations, setReservations] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { pharmacyUser } = useAuth();
+  const {
+    activePharmacy,
+    getActivePharmacyInventory,
+    getActivePharmacyReservations,
+    updateReservationStatus
+  } = usePharmacy();
 
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [resInv, resRes] = await Promise.all([
-        inventoryService.getAll(),
-        reservationService.getAll({ limit: 10 })
-      ]);
-      setInventory(resInv.data?.data || []);
-      setReservations(resRes.data?.data || []);
-    } catch (err) {
-      setError('Failed to load pharmacy dashboard statistics.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  // Compute live active pharmacy data
+  const inventory = getActivePharmacyInventory();
+  const reservations = getActivePharmacyReservations();
 
   const totalMedicines = inventory.length;
   const totalStock = inventory.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const lowStockItems = inventory.filter(
     (item) => item.quantity <= (item.lowStockThreshold || 10)
   );
-  const pendingReservations = reservations.filter((r) => r.status === 'PENDING');
-  const confirmedReservations = reservations.filter((r) => r.status === 'CONFIRMED');
 
-  const handleUpdateStatus = async (id, newStatus) => {
-    try {
-      await reservationService.updateStatus(id, newStatus);
-      await fetchDashboardData();
-    } catch (err) {
-      alert(err.response?.data?.message || 'Failed to update reservation status.');
-    }
+  const pendingReservations = reservations.filter(
+    (r) => r.status === 'READY_FOR_PICKUP' || r.status === 'CONFIRMED' || r.status === 'PENDING'
+  );
+  const confirmedOrders = reservations.filter(
+    (r) => r.status === 'PICKED_UP'
+  );
+
+  const storeName = pharmacyUser?.pharmacyName || activePharmacy?.name || 'Porur Care Dispensary';
+  const storeAddress = pharmacyUser?.address || activePharmacy?.address || 'Mount-Poonamallee High Road, Porur, Chennai 600116';
+
+  const handleUpdateStatus = (id, newStatus) => {
+    updateReservationStatus(id, newStatus);
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
+  const handleRefresh = () => {
+    setRefreshTrigger((prev) => prev + 1);
   };
 
   return (
@@ -67,121 +63,149 @@ export const PharmacyDashboard = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
+          <div className="flex items-center space-x-2 text-teal-600 text-xs font-bold uppercase tracking-wider mb-1">
+            <Store className="w-4 h-4" />
+            <span>MedLocate Pharmacy</span>
+          </div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            Pharmacy Management Dashboard
+            {storeName}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Store: <strong>{user?.pharmacy?.name || 'Your Pharmacy'}</strong> ({user?.pharmacy?.address || 'Chennai'})
+          <p className="text-xs sm:text-sm text-slate-600 mt-1 flex items-center space-x-1.5 flex-wrap">
+            <span className="font-semibold text-slate-800">Pharmacy Management</span>
+            <span className="text-slate-400">•</span>
+            <span className="text-slate-500">{storeAddress}</span>
           </p>
         </div>
 
-        <button
-          onClick={fetchDashboardData}
-          className="self-start sm:self-auto px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 shadow-xs flex items-center space-x-1.5 transition-colors"
-        >
-          <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
-          <span>Refresh Data</span>
-        </button>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={handleRefresh}
+            className="px-3.5 py-2 bg-white border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl hover:bg-slate-50 shadow-xs flex items-center space-x-1.5 transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+            <span>Sync Live Inventory</span>
+          </button>
+        </div>
       </div>
 
-      {error && <ErrorMessage message={error} onDismiss={() => setError(null)} />}
-
-      {/* Metrics Row */}
+      {/* Metrics Row: Total Stock, Low Stock Alerts, Pending Holds, Confirmed Orders */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatsCard
-          title="Total Stock"
+          title="TOTAL STOCK"
           value={totalStock}
           icon={Package}
           color="teal"
-          subtitle={`${totalMedicines} distinct catalog items`}
+          subtitle={`${totalMedicines} catalog SKUs`}
         />
         <StatsCard
-          title="Low Stock Alerts"
+          title="LOW STOCK ALERTS"
           value={lowStockItems.length}
           icon={AlertTriangle}
           color={lowStockItems.length > 0 ? 'rose' : 'emerald'}
-          subtitle={lowStockItems.length > 0 ? 'Needs reordering' : 'Stock levels healthy'}
+          subtitle={lowStockItems.length > 0 ? 'Replenishment needed' : 'Adequate buffer units'}
         />
         <StatsCard
-          title="Pending Holds"
+          title="PENDING HOLDS"
           value={pendingReservations.length}
           icon={Clock}
           color="amber"
-          subtitle="Waiting for pickup confirmation"
+          subtitle="Awaiting patient pickup"
         />
         <StatsCard
-          title="Confirmed Orders"
-          value={confirmedReservations.length}
+          title="CONFIRMED ORDERS"
+          value={confirmedOrders.length}
           icon={CheckCircle}
           color="blue"
-          subtitle="Ready for counter pickup"
+          subtitle="Dispensed to patients"
         />
       </div>
 
-      {/* Content Split: Incoming Holds & Low Stock Watchlist */}
+      {/* Content Split: Incoming Reservations & Low Stock Watchlist */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left: Active Reservations Management */}
         <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
-              <h3 className="font-bold text-base text-slate-900">Incoming Reservations</h3>
-              <p className="text-xs text-slate-500">Confirm or complete patient holds</p>
+              <h3 className="font-bold text-base text-slate-900">INCOMING RESERVATIONS</h3>
+              <p className="text-xs text-slate-500">Live patient holds for {storeName}</p>
             </div>
-            <Link
-              to="/pharmacy/reservations"
-              className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center space-x-1"
-            >
-              <span>View all</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+            <span className="text-xs font-bold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
+              {reservations.length} total
+            </span>
           </div>
 
-          {loading ? (
-            <LoadingSpinner size="sm" message="Loading reservations..." />
-          ) : reservations.length === 0 ? (
-            <div className="py-8 text-center text-xs text-slate-400">
-              No recent reservations placed at your store.
+          {reservations.length === 0 ? (
+            <div className="py-12 text-center text-xs text-slate-400">
+              No recent reservations placed at {storeName}.
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {reservations.slice(0, 5).map((res) => (
-                <div key={res._id} className="py-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className="font-mono font-bold text-sm text-slate-900">
-                        {res.pickupCode}
-                      </span>
-                      <StatusBadge status={res.status} />
-                    </div>
-                    <p className="text-xs text-slate-600 mt-1">
-                      Patient: <strong>{res.patientId?.name || 'Patient'}</strong> ({res.patientId?.phone})
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {res.items[0]?.quantity}× {res.items[0]?.medicineName} • ₹{res.totalAmount}
-                    </p>
-                  </div>
+              {reservations.map((res) => {
+                const resId = res._id || res.id || res.pickupCode;
+                const isReady = res.status === 'READY_FOR_PICKUP' || res.status === 'CONFIRMED' || res.status === 'PENDING';
+                const isPickedUp = res.status === 'PICKED_UP';
+                const patientName = res.patientName || res.patientId?.name || 'Rahul Sharma';
+                const patientPhone = res.patientPhone || res.patientId?.phone || '+91 98401 23456';
+                const medicineName = res.medicineName || res.items?.[0]?.medicineName || 'Paracetamol 650mg';
+                const quantity = res.quantity || res.items?.[0]?.quantity || 1;
+                const price = parseFloat(res.totalAmount || res.price * quantity || 29.90).toFixed(2);
 
-                  {/* Actions for Pharmacy Staff */}
-                  <div className="flex items-center space-x-2 self-end sm:self-auto">
-                    {res.status === 'PENDING' && (
-                      <button
-                        onClick={() => handleUpdateStatus(res._id, 'CONFIRMED')}
-                        className="px-3 py-1 bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
-                      >
-                        Confirm Hold
-                      </button>
-                    )}
-                    {res.status === 'CONFIRMED' && (
-                      <button
-                        onClick={() => handleUpdateStatus(res._id, 'PICKED_UP')}
-                        className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors"
-                      >
-                        Mark Picked Up
-                      </button>
-                    )}
+                return (
+                  <div key={resId} className="py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono font-bold text-xs px-2 py-0.5 bg-slate-100 text-slate-800 rounded border border-slate-200">
+                          {res.pickupCode || res.id}
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          isReady
+                            ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
+                          {isReady ? 'Ready for Pickup' : 'Picked Up'}
+                        </span>
+                      </div>
+
+                      <h4 className="text-sm font-bold text-slate-900">
+                        {patientName}
+                      </h4>
+
+                      <p className="text-xs text-slate-700 font-medium">
+                        {quantity} × {medicineName}
+                      </p>
+
+                      <div className="flex items-center space-x-3 text-xs text-slate-500">
+                        <span className="font-semibold text-slate-900">₹{price}</span>
+                        <span>•</span>
+                        <span className="flex items-center space-x-1">
+                          <Phone className="w-3 h-3 text-slate-400" />
+                          <span>{patientPhone}</span>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions for Pharmacy Staff */}
+                    <div className="flex items-center space-x-2 self-end sm:self-auto">
+                      {isReady && (
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateStatus(resId, 'PICKED_UP')}
+                          className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center space-x-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>Mark Picked Up</span>
+                        </button>
+                      )}
+                      {isPickedUp && (
+                        <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 flex items-center space-x-1">
+                          <CheckCircle className="w-3 h-3 text-emerald-600" />
+                          <span>Picked Up</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -190,36 +214,36 @@ export const PharmacyDashboard = () => {
         <div className="lg:col-span-5 bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div>
-              <h3 className="font-bold text-base text-slate-900">Low Stock Watchlist</h3>
-              <p className="text-xs text-slate-500">Items below replenishment threshold</p>
+              <h3 className="font-bold text-base text-slate-900">Low Stock Alerts</h3>
+              <p className="text-xs text-slate-500">Items below threshold for {storeName}</p>
             </div>
             <Link
-              to="/pharmacy/inventory?filter=low"
+              to="/pharmacy/inventory"
               className="text-xs font-semibold text-teal-600 hover:text-teal-700 flex items-center space-x-1"
             >
-              <span>Manage</span>
+              <span>Manage all ({inventory.length})</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
           {lowStockItems.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400">
-              All inventory items are currently above threshold levels.
+              All inventory items in {storeName} are currently above replenishment threshold.
             </div>
           ) : (
             <div className="divide-y divide-slate-100">
-              {lowStockItems.slice(0, 5).map((item) => (
-                <div key={item._id} className="py-3 flex items-center justify-between">
+              {lowStockItems.map((item) => (
+                <div key={item._id || item.id} className="py-3 flex items-center justify-between">
                   <div>
                     <h4 className="font-bold text-xs text-slate-800">
-                      {item.medicineId?.name}
+                      {item.medicineName || item.medicineId?.name}
                     </h4>
                     <span className="text-[11px] text-slate-400">
-                      {item.medicineId?.category}
+                      ₹{item.price?.toFixed(2)} • {item.medicineId?.category || 'Prescription Drug'}
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-xs font-extrabold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                    <span className="text-xs font-extrabold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-lg border border-rose-200">
                       {item.quantity} left
                     </span>
                   </div>

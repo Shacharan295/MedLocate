@@ -12,12 +12,12 @@ const getInventory = async (req, res, next) => {
   try {
     let pharmacyId = req.user.pharmacyId;
 
-    // Admin can query any pharmacy's inventory
-    if (req.user.role === 'admin' && req.query.pharmacyId) {
-      pharmacyId = req.query.pharmacyId;
+    // Admin can query any pharmacy's inventory, or all if unspecified
+    if (req.user.role === 'admin') {
+      pharmacyId = req.query.pharmacyId || null;
     }
 
-    if (!pharmacyId) {
+    if (!pharmacyId && req.user.role !== 'admin') {
       return res.status(400).json({
         success: false,
         message: 'No pharmacy associated with this account or query.'
@@ -25,7 +25,7 @@ const getInventory = async (req, res, next) => {
     }
 
     const { lowStock, search } = req.query;
-    const query = { pharmacyId };
+    const query = pharmacyId ? { pharmacyId } : {};
 
     if (lowStock === 'true') {
       // Find where quantity <= lowStockThreshold
